@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rouge Nuit — Verkaufstracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0A0A0A;
+  --black2:#111111;
+  --black3:#1C1C1C;
+  --black4:#252525;
+  --gold:#C9A84C;
+  --gold2:#E2C97E;
+  --gold3:#F0DFA0;
+  --white:#FFFFFF;
+  --white2:#F5F5F5;
+  --white3:#E8E8E8;
+  --muted:#7A7A7A;
+  --muted2:#555555;
+  --red:#C0392B;
+  --green:#27AE60;
+  --border:#2C2C2C;
+}
+body{background:var(--black);color:var(--white);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:60px}
+
+/* ── HEADER ── */
+header{
+  background:var(--black2);
+  border-bottom:1px solid var(--gold);
+  padding:0 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:72px;
+  position:sticky;top:0;z-index:200;
+}
+.logo-block{display:flex;align-items:baseline;gap:14px}
+.logo-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.7rem;font-weight:600;letter-spacing:0.22em;
+  color:var(--gold);text-transform:uppercase
+}
+.logo-divider{width:1px;height:18px;background:var(--border)}
+.logo-sub{font-size:0.65rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted)}
+.header-date{font-size:0.72rem;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:0;
+  border-bottom:1px solid var(--border);
+  background:var(--black2);
+  padding:0 40px;
+}
+.tab-btn{
+  background:none;border:none;
+  color:var(--muted);
+  font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:500;
+  letter-spacing:0.16em;text-transform:uppercase;
+  padding:14px 24px;cursor:pointer;
+  border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+  transition:color .15s,border-color .15s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  min-height:44px;
+}
+.tab-btn:hover{color:var(--white2)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── MAIN ── */
+main{max-width:1020px;margin:0 auto;padding:36px 24px 0}
+@media(max-width:640px){
+  header{padding:0 16px;height:60px}
+  .tabs{padding:0 16px}
+  main{padding:24px 14px 0}
+  .logo-name{font-size:1.3rem}
+}
+
+/* ── SECTION TITLE ── */
+.section-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.2rem;font-weight:400;font-style:italic;
+  color:var(--gold2);letter-spacing:0.04em;
+  margin-bottom:22px;
+  display:flex;align-items:center;gap:10px
+}
+.section-title::before{content:'';display:inline-block;width:22px;height:1px;background:var(--gold)}
+
+/* ── FORM CARD ── */
+.form-card{
+  background:var(--black3);
+  border:1px solid var(--border);
+  border-top:2px solid var(--gold);
+  border-radius:3px;padding:30px 30px 26px;margin-bottom:36px
+}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 26px}
+@media(max-width:560px){.form-grid{grid-template-columns:1fr}}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.label-row{display:flex;align-items:center;gap:6px}
+label{font-size:0.68rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted)}
+.req{color:var(--gold);margin-left:1px}
+
+/* TOOLTIP */
+.tt-wrap{position:relative;display:inline-flex;align-items:center}
+.tt-icon{
+  width:14px;height:14px;border-radius:50%;
+  border:1px solid var(--muted2);color:var(--muted);
+  font-size:0.58rem;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;
+  cursor:default;font-family:'Inter',sans-serif;line-height:1;
+  transition:border-color .15s,color .15s;user-select:none
+}
+.tt-icon:hover{border-color:var(--gold);color:var(--gold)}
+.tt-box{
+  display:none;position:absolute;
+  bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--black2);border:1px solid var(--gold);
+  color:var(--white2);font-size:0.72rem;font-weight:400;line-height:1.55;
+  padding:10px 13px;border-radius:3px;width:210px;z-index:300;
+  letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;
+  box-shadow:0 6px 24px rgba(0,0,0,0.7)
+}
+.tt-box::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--gold)
+}
+.tt-wrap:hover .tt-box{display:block}
+
+/* INPUTS */
+input,select{
+  background:#0D0D0D;border:1px solid var(--border);border-radius:2px;
+  color:var(--white);font-family:'Inter',sans-serif;font-size:0.85rem;
+  padding:11px 13px;width:100%;
+  transition:border-color .15s,box-shadow .15s;outline:none;-webkit-appearance:none
+}
+input::placeholder{color:#3A3A3A}
+input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.13)}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.5) sepia(1) saturate(3);cursor:pointer}
+select option{background:var(--black3)}
+input.invalid{border-color:var(--red)}
+.field-err{font-size:0.67rem;color:var(--red);margin-top:2px;display:none}
+.field-err.show{display:block}
+
+/* BUTTONS */
+.btn-gold{
+  background:linear-gradient(135deg,#B8912A,var(--gold));
+  border:none;border-radius:2px;
+  color:var(--black);
+  font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:700;
+  letter-spacing:0.18em;text-transform:uppercase;
+  padding:13px 30px;cursor:pointer;
+  transition:opacity .18s,box-shadow .18s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  min-height:44px;
+}
+.btn-gold:hover{opacity:.9;box-shadow:0 0 20px rgba(201,168,76,.3)}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border);border-radius:2px;
+  color:var(--muted);font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:500;
+  letter-spacing:0.13em;text-transform:uppercase;padding:13px 22px;cursor:pointer;
+  transition:border-color .15s,color .15s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  min-height:44px;
+}
+.btn-ghost:hover{border-color:var(--muted);color:var(--white2)}
+.btn-outline-gold{
+  background:transparent;border:1px solid var(--gold);border-radius:2px;
+  color:var(--gold);font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:600;
+  letter-spacing:0.14em;text-transform:uppercase;padding:10px 20px;cursor:pointer;
+  transition:background .15s,color .15s;display:inline-flex;align-items:center;gap:7px;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  min-height:44px;
+}
+.btn-outline-gold:hover{background:rgba(201,168,76,.1)}
+.form-actions{margin-top:26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+
+/* TOAST */
+#toast{
+  position:fixed;top:80px;right:24px;
+  background:var(--black3);border:1px solid var(--green);color:#6FCAA0;
+  font-size:0.78rem;padding:11px 18px;border-radius:2px;
+  opacity:0;transform:translateY(-8px);
+  transition:opacity .22s,transform .22s;pointer-events:none;z-index:999;letter-spacing:.05em
+}
+#toast.show{opacity:1;transform:translateY(0)}
+
+/* STATS */
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+.stat-box{
+  background:var(--black3);border:1px solid var(--border);
+  border-top:2px solid var(--gold);
+  border-radius:2px;padding:16px 22px;min-width:120px;flex:1
+}
+.stat-lbl{font-size:0.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;color:var(--gold)}
+
+/* TAGESBERICHT HEADER */
+.tagesbericht-header{
+  display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:14px;margin-bottom:20px
+}
+.date-pill{
+  background:var(--black3);border:1px solid var(--border);
+  border-radius:2px;padding:8px 16px;
+  font-size:0.72rem;letter-spacing:.1em;color:var(--white2);
+  display:flex;align-items:center;gap:10px
+}
+.date-pill input[type="date"]{
+  background:none;border:none;padding:0;
+  font-size:0.72rem;color:var(--gold);
+  width:auto;letter-spacing:.05em
+}
+.date-pill input[type="date"]:focus{box-shadow:none;border:none}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.filter-bar input,.filter-bar select{width:auto;padding:8px 12px;font-size:0.8rem}
+.filter-bar input{flex:1;min-width:140px}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:3px}
+table{width:100%;border-collapse:collapse;font-size:0.81rem;min-width:680px}
+thead tr{background:#0D0D0D;border-bottom:1px solid var(--gold)}
+th{
+  padding:13px 15px;text-align:left;
+  font-size:0.62rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--gold);white-space:nowrap;cursor:pointer;user-select:none
+}
+th:hover{color:var(--gold2)}
+th .si{opacity:.4;margin-left:3px;font-size:.58rem}
+th.sorted .si{opacity:1}
+tbody tr{border-bottom:1px solid #1E1E1E;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(201,168,76,.05)}
+td{padding:12px 15px;color:var(--white2);vertical-align:middle}
+td.sub{color:var(--muted);font-size:0.76rem}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 8px;border-radius:2px;font-size:0.68rem;font-weight:500;letter-spacing:.05em;font-family:'Inter',monospace}
+.b-alk{background:rgba(201,168,76,.1);color:var(--gold2);border:1px solid rgba(201,168,76,.25)}
+.b-oel{background:rgba(255,255,255,.05);color:var(--white3);border:1px solid rgba(255,255,255,.12)}
+.b-int{background:rgba(90,90,90,.2);color:#B0B0B0;border:1px solid rgba(90,90,90,.35)}
+
+/* DELETE */
+.btn-del{background:none;border:none;color:#3A3A3A;cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:2px;transition:color .15s,background .15s;line-height:1}
+.btn-del:hover{color:var(--red);background:rgba(192,57,43,.1)}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:56px 20px;color:var(--muted)}
+.empty-icon{font-size:2.2rem;margin-bottom:14px;opacity:.25}
+.empty-state p{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-style:italic;margin-bottom:6px;color:#444}
+.empty-state small{font-size:0.7rem;letter-spacing:.06em;color:#2E2E2E}
+
+/* DIVIDER */
+hr.div{border:none;border-top:1px solid var(--border);margin:36px 0}
+
+/* PDF SECTION */
+.pdf-bar{
+  background:var(--black3);border:1px solid var(--border);
+  border-left:3px solid var(--gold);
+  border-radius:3px;padding:18px 22px;
+  display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+  margin-bottom:28px
+}
+.pdf-info p{font-size:0.82rem;color:var(--white2);margin-bottom:3px}
+.pdf-info small{font-size:0.7rem;color:var(--muted);letter-spacing:.04em}
+
+/* TAB PANELS */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-block">
+    <span class="logo-name">Rouge Nuit</span>
+    <span class="logo-divider"></span>
+    <span class="logo-sub">Verkaufsverwaltung</span>
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="erfassen" type="button">Verkauf erfassen</button>
+  <button class="tab-btn" data-tab="tagesbericht" type="button">Tagesbericht</button>
+  <button class="tab-btn" data-tab="uebersicht" type="button">Alle Einträge</button>
+</div>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════
+     TAB 1: ERFASSEN
+═══════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-erfassen">
+
+  <div class="section-title" style="margin-top:8px">Neuen Verkauf eintragen</div>
+
+  <div class="form-card">
+    <div class="form-grid">
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-duft">Duftname <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Name des verkauften Parfüms, z.&thinsp;B. „Oud Velours 50ml". Genau wie auf der Flasche.</div>
+          </div>
+        </div>
+        <input type="text" id="f-duft" placeholder="z. B. Oud Velours" autocomplete="off"/>
+        <span class="field-err" id="err-duft">Bitte Duftname eingeben.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-datum">Verkaufsdatum <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Datum des Verkaufs. Wird automatisch auf heute gesetzt.</div>
+          </div>
+        </div>
+        <input type="date" id="f-datum"/>
+        <span class="field-err" id="err-datum">Bitte Datum wählen.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-alk">Alkoholcharge <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Chargennummer des Alkohols vom Lieferschein, z.&thinsp;B. „ALK-2024-07". Wichtig für Rückverfolgbarkeit.</div>
+          </div>
+        </div>
+        <input type="text" id="f-alk" placeholder="z. B. ALK-2024-07" autocomplete="off"/>
+        <span class="field-err" id="err-alk">Bitte Alkoholcharge eingeben.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-oel">Ölcharge <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Chargennummer des Duftöls/Konzentrats vom Lieferanten, z.&thinsp;B. „OEL-RN-042".</div>
+          </div>
+        </div>
+        <input type="text" id="f-oel" placeholder="z. B. OEL-RN-042" autocomplete="off"/>
+        <span class="field-err" id="err-oel">Bitte Ölcharge eingeben.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-int">Interne Charge <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Eure selbst vergebene Chargennummer für dieses Produkt, z.&thinsp;B. „RN-2024-001". Für interne Zuordnung.</div>
+          </div>
+        </div>
+        <input type="text" id="f-int" placeholder="z. B. RN-2024-001" autocomplete="off"/>
+        <span class="field-err" id="err-int">Bitte interne Charge eingeben.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-ma">Mitarbeiter</label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Optional: Wer hat diesen Verkauf eingetragen? Erscheint im Tagesbericht.</div>
+          </div>
+        </div>
+        <input type="text" id="f-ma" placeholder="Name (optional)" autocomplete="off"/>
+      </div>
+
+    </div>
+    <div class="form-actions">
+      <button class="btn-gold" id="btn-submit" type="button">Verkauf speichern</button>
+      <button class="btn-ghost" id="btn-reset" type="button">Zurücksetzen</button>
+    </div>
+  </div>
+
+  <!-- Quick stats on erfassen tab -->
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-lbl">Gesamt</div><div class="stat-val" id="s-total">0</div></div>
+    <div class="stat-box"><div class="stat-lbl">Heute</div><div class="stat-val" id="s-today">0</div></div>
+    <div class="stat-box"><div class="stat-lbl">Diesen Monat</div><div class="stat-val" id="s-month">0</div></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TAB 2: TAGESBERICHT
+═══════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-tagesbericht">
+
+  <div style="margin-top:8px">
+    <div class="tagesbericht-header">
+      <div class="section-title" style="margin-bottom:0">Tagesbericht</div>
+      <div class="date-pill">
+        <span style="color:var(--muted);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase">Datum:</span>
+        <input type="date" id="tb-datum"/>
+      </div>
+    </div>
+
+    <!-- PDF EXPORT BAR -->
+    <div class="pdf-bar">
+      <div class="pdf-info">
+        <p>Schichtabschluss — PDF Tagesbericht</p>
+        <small>Alle Verkäufe des gewählten Tages als professionelles Dokument herunterladen.</small>
+      </div>
+      <button class="btn-gold" id="btn-pdf" type="button">↓ &nbsp;PDF herunterladen</button>
+    </div>
+
+    <!-- TAGESBERICHT STATS -->
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-lbl">Verkäufe am Tag</div><div class="stat-val" id="tb-count">0</div></div>
+      <div class="stat-box"><div class="stat-lbl">Verschiedene Düfte</div><div class="stat-val" id="tb-dufte">0</div></div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Duftname</th>
+            <th>Alkoholcharge</th>
+            <th>Ölcharge</th>
+            <th>Interne Charge</th>
+            <th>Mitarbeiter</th>
+          </tr>
+        </thead>
+        <tbody id="tb-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TAB 3: ALLE EINTRÄGE
+═══════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-uebersicht">
+
+  <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div class="section-title" style="margin-bottom:0">Alle Einträge</div>
+    <button class="btn-outline-gold" id="btn-csv" type="button">↓ CSV exportieren</button>
+  </div>
+
+  <div class="filter-bar">
+    <input type="text" id="f-search" placeholder="Suche nach Duft, Charge …"/>
+    <select id="f-monat">
+      <option value="">Alle Monate</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('duftname')" data-k="duftname">Duftname <span class="si">↕</span></th>
+          <th onclick="sortBy('datum')" data-k="datum">Datum <span class="si">↕</span></th>
+          <th onclick="sortBy('alkohol')" data-k="alkohol">Alkoholcharge <span class="si">↕</span></th>
+          <th onclick="sortBy('oel')" data-k="oel">Ölcharge <span class="si">↕</span></th>
+          <th onclick="sortBy('intern')" data-k="intern">Interne Charge <span class="si">↕</span></th>
+          <th onclick="sortBy('mitarbeiter')" data-k="mitarbeiter">Mitarbeiter <span class="si">↕</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="ue-body"></tbody>
+    </table>
+  </div>
+
+</div>
+
+</main>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+let data = JSON.parse(localStorage.getItem('rn_v2') || '[]');
+let sortKey = 'datum', sortAsc = false;
+function save(){ localStorage.setItem('rn_v2', JSON.stringify(data)) }
+
+// ── INIT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const today = todayStr();
+  document.getElementById('f-datum').value = today;
+  document.getElementById('tb-datum').value = today;
+  document.getElementById('headerDate').textContent = fmtDate(today);
+  updateStats();
+  renderTagesbericht();
+  populateMonths();
+  renderUebersicht();
+
+  // Wire tab buttons — iOS safe
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+    ['click','touchend'].forEach(evt => {
+      btn.addEventListener(evt, e => {
+        e.preventDefault();
+        switchTab(btn.dataset.tab);
+      }, {passive:false});
+    });
+  });
+
+  // Wire form buttons — iOS safe
+  function wireBtn(id, fn){
+    const el = document.getElementById(id);
+    if(!el) return;
+    ['click','touchend'].forEach(evt => {
+      el.addEventListener(evt, e => { e.preventDefault(); fn(); }, {passive:false});
+    });
+  }
+  wireBtn('btn-submit', submitVerkauf);
+  wireBtn('btn-reset', resetForm);
+  wireBtn('btn-pdf', exportPDF);
+  wireBtn('btn-csv', exportCSV);
+
+  // Wire date picker for tagesbericht
+  document.getElementById('tb-datum').addEventListener('change', renderTagesbericht);
+  document.getElementById('f-search').addEventListener('input', renderUebersicht);
+  document.getElementById('f-monat').addEventListener('change', renderUebersicht);
+});
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const names=['erfassen','tagesbericht','uebersicht'];
+    b.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='tagesbericht') renderTagesbericht();
+  if(name==='uebersicht'){ populateMonths(); renderUebersicht(); }
+}
+
+// ── FORM SUBMIT ───────────────────────────────────────────────
+function submitVerkauf(){
+  const fields = ['duft','datum','alk','oel','int'];
+  let ok = true;
+  fields.forEach(f => {
+    const el = document.getElementById('f-'+f);
+    const er = document.getElementById('err-'+f);
+    if(!el.value.trim()){ el.classList.add('invalid'); if(er) er.classList.add('show'); ok=false; }
+    else{ el.classList.remove('invalid'); if(er) er.classList.remove('show'); }
+  });
+  if(!ok) return;
+  data.unshift({
+    id: Date.now(),
+    duftname: v('f-duft'), datum: v('f-datum'),
+    alkohol: v('f-alk'), oel: v('f-oel'),
+    intern: v('f-int'), mitarbeiter: v('f-ma') || '—'
+  });
+  save(); resetForm(); updateStats();
+  populateMonths(); renderUebersicht(); renderTagesbericht();
+  toast('✓ Verkauf erfasst');
+}
+function v(id){ return document.getElementById(id).value.trim() }
+function resetForm(){
+  ['duft','alk','oel','int','ma'].forEach(f => {
+    document.getElementById('f-'+f).value = '';
+    document.getElementById('f-'+f).classList.remove('invalid');
+    const er = document.getElementById('err-'+f);
+    if(er) er.classList.remove('show');
+  });
+  document.getElementById('err-datum').classList.remove('show');
+  document.getElementById('f-datum').value = todayStr();
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function updateStats(){
+  const today = todayStr(), month = today.slice(0,7);
+  document.getElementById('s-total').textContent = data.length;
+  document.getElementById('s-today').textContent = data.filter(x=>x.datum===today).length;
+  document.getElementById('s-month').textContent = data.filter(x=>x.datum.startsWith(month)).length;
+}
+
+// ── TAGESBERICHT ──────────────────────────────────────────────
+function renderTagesbericht(){
+  const d = document.getElementById('tb-datum').value;
+  const rows = data.filter(x=>x.datum===d);
+  document.getElementById('tb-count').textContent = rows.length;
+  document.getElementById('tb-dufte').textContent = new Set(rows.map(x=>x.duftname)).size;
+  const tbody = document.getElementById('tb-body');
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>Keine Verkäufe an diesem Tag.</p>
+      <small>Wähle ein anderes Datum oder trage zuerst Verkäufe ein.</small>
+    </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((x,i) => `<tr>
+    <td class="sub">${i+1}</td>
+    <td><strong>${esc(x.duftname)}</strong></td>
+    <td><span class="badge b-alk">${esc(x.alkohol)}</span></td>
+    <td><span class="badge b-oel">${esc(x.oel)}</span></td>
+    <td><span class="badge b-int">${esc(x.intern)}</span></td>
+    <td class="sub">${esc(x.mitarbeiter)}</td>
+  </tr>`).join('');
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const d = document.getElementById('tb-datum').value;
+  const rows = data.filter(x=>x.datum===d);
+
+  if(!rows.length){ alert('Keine Verkäufe an diesem Tag — nichts zum Exportieren.'); return; }
+
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, margin = 16;
+
+  // ── BG ──
+  doc.setFillColor(10,10,10);
+  doc.rect(0,0,W,297,'F');
+
+  // ── GOLD HEADER BAR ──
+  doc.setFillColor(201,168,76);
+  doc.rect(0,0,W,28,'F');
+
+  // ── LOGO ──
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.setTextColor(10,10,10);
+  doc.text('ROUGE NUIT', margin, 17);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.setTextColor(40,30,0);
+  doc.text('TAGESBERICHT — INTERNE NUTZUNG', margin, 23);
+
+  // RIGHT: date
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(10,10,10);
+  doc.text(fmtDate(d), W - margin, 14, {align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.text('Schichtabschluss', W - margin, 20, {align:'right'});
+
+  // ── GOLD LINE ──
+  doc.setDrawColor(201,168,76);
+  doc.setLineWidth(0.5);
+  doc.line(margin, 34, W - margin, 34);
+
+  // ── SUBTITLE ──
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(201,168,76);
+  doc.text('Verkaufsprotokoll', margin, 41);
+
+  // ── META BOX ──
+  doc.setFillColor(28,28,28);
+  doc.setDrawColor(44,44,44);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, 45, W-margin*2, 18, 1, 1, 'FD');
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(120,120,120);
+  doc.text('DATUM', margin+6, 52);
+  doc.text('ANZAHL VERKÄUFE', margin+55, 52);
+  doc.text('VERSCHIEDENE DÜFTE', margin+105, 52);
+  doc.text('ERSTELLT AM', margin+155, 52);
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(240,240,240);
+  doc.text(fmtDate(d), margin+6, 58);
+  doc.text(String(rows.length), margin+55, 58);
+  doc.text(String(new Set(rows.map(x=>x.duftname)).size), margin+105, 58);
+  doc.text(new Date().toLocaleDateString('de-DE'), margin+155, 58);
+
+  // ── TABLE ──
+  doc.autoTable({
+    startY: 70,
+    margin: {left: margin, right: margin},
+    head: [['#','Duftname','Alkoholcharge','Ölcharge','Interne Charge','Mitarbeiter']],
+    body: rows.map((x,i)=>[i+1, x.duftname, x.alkohol, x.oel, x.intern, x.mitarbeiter]),
+    styles:{
+      font:'helvetica',
+      fontSize:8,
+      textColor:[230,230,230],
+      fillColor:[17,17,17],
+      lineColor:[40,40,40],
+      lineWidth:0.25,
+      cellPadding:4
+    },
+    headStyles:{
+      fillColor:[35,35,35],
+      textColor:[201,168,76],
+      fontSize:6.5,
+      fontStyle:'bold',
+      letterSpacing:1
+    },
+    alternateRowStyles:{fillColor:[22,22,22]},
+    columnStyles:{
+      0:{cellWidth:8, halign:'center', textColor:[100,100,100]},
+      1:{cellWidth:42, fontStyle:'bold', textColor:[255,255,255]},
+      2:{cellWidth:32},
+      3:{cellWidth:32},
+      4:{cellWidth:32},
+      5:{cellWidth:30}
+    }
+  });
+
+  const finalY = doc.lastAutoTable.finalY || 70;
+
+  // ── FOOTER GOLD LINE ──
+  doc.setDrawColor(201,168,76);
+  doc.setLineWidth(0.4);
+  doc.line(margin, 280, W-margin, 280);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(80,80,80);
+  doc.text('Rouge Nuit — Vertrauliches internes Dokument', margin, 285);
+  doc.text(`Seite 1  |  Generiert: ${new Date().toLocaleString('de-DE')}`, W-margin, 285, {align:'right'});
+
+  doc.save(`RogueNuit_Tagesbericht_${d}.pdf`);
+  toast('✓ PDF heruntergeladen');
+}
+
+// ── ÜBERSICHT / SORT / FILTER ─────────────────────────────────
+function sortBy(key){
+  if(sortKey===key) sortAsc=!sortAsc; else{sortKey=key;sortAsc=true}
+  renderUebersicht();
+}
+function renderUebersicht(){
+  const q = (document.getElementById('f-search').value||'').toLowerCase();
+  const m = document.getElementById('f-monat').value;
+  let rows = data.filter(x => {
+    const mq = !q || [x.duftname,x.alkohol,x.oel,x.intern,x.mitarbeiter].some(s=>s.toLowerCase().includes(q));
+    const mm = !m || x.datum.startsWith(m);
+    return mq && mm;
+  });
+  rows.sort((a,b)=>{
+    let va=a[sortKey]||'', vb=b[sortKey]||'';
+    if(va<vb) return sortAsc?-1:1;
+    if(va>vb) return sortAsc?1:-1;
+    return 0;
+  });
+  document.querySelectorAll('#tab-uebersicht th[data-k]').forEach(th=>{
+    th.classList.toggle('sorted',th.dataset.k===sortKey);
+    const si=th.querySelector('.si');
+    if(th.dataset.k===sortKey) si.textContent=sortAsc?'↑':'↓'; else si.textContent='↕';
+  });
+  const tbody = document.getElementById('ue-body');
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state">
+      <div class="empty-icon">📦</div><p>Keine Einträge gefunden.</p>
+      <small>Trage Verkäufe im Tab „Verkauf erfassen" ein.</small>
+    </div></td></tr>`; return;
+  }
+  tbody.innerHTML = rows.map((x,i)=>`<tr>
+    <td><strong>${esc(x.duftname)}</strong></td>
+    <td class="sub">${fmtDate(x.datum)}</td>
+    <td><span class="badge b-alk">${esc(x.alkohol)}</span></td>
+    <td><span class="badge b-oel">${esc(x.oel)}</span></td>
+    <td><span class="badge b-int">${esc(x.intern)}</span></td>
+    <td class="sub">${esc(x.mitarbeiter)}</td>
+    <td><button class="btn-del" onclick="del(${x.id})" title="Löschen">✕</button></td>
+  </tr>`).join('');
+}
+function del(id){
+  if(!confirm('Eintrag wirklich löschen?')) return;
+  data=data.filter(x=>x.id!==id);
+  save(); updateStats(); populateMonths(); renderUebersicht(); renderTagesbericht();
+}
+function populateMonths(){
+  const months=[...new Set(data.map(x=>x.datum.slice(0,7)))].sort().reverse();
+  const sel=document.getElementById('f-monat');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Alle Monate</option>'+
+    months.map(m=>`<option value="${m}"${m===cur?' selected':''}>${fmtMonth(m)}</option>`).join('');
+}
+function exportCSV(){
+  if(!data.length){alert('Keine Daten.');return}
+  const h=['Duftname','Datum','Alkoholcharge','Ölcharge','Interne Charge','Mitarbeiter'];
+  const csv=[h,...data.map(x=>[x.duftname,x.datum,x.alkohol,x.oel,x.intern,x.mitarbeiter])]
+    .map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RougeNuit_Export_${todayStr()}.csv`;
+  a.click();
+  toast('✓ CSV exportiert');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function todayStr(){ return new Date().toISOString().split('T')[0] }
+function fmtDate(d){ if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${dd}.${m}.${y}` }
+function fmtMonth(ym){ const [y,m]=ym.split('-'); return ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][+m-1]+' '+y }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800) }
+</script>
+</body>
+</html>
