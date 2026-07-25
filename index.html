@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Rouge Nuit — Verkaufstracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+// ── EDIT MODAL ────────────────────────────────────────────────
+let editingId = null;
+
+function openEditModal(id){
+  const entry = verkaufe.find(x=>x.id===id);
+  if(!entry) return;
+  editingId = id;
+
+  // Populate duft select
+  const sel = document.getElementById('edit-duft');
+  const sorted = [...parfume].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML = '<option value="">— Duft auswählen —</option>' +
+    sorted.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+
+  // Find matching parfum by name
+  const matched = parfume.find(p=>p.name===entry.duftname);
+  if(matched) sel.value = matched.id;
+
+  document.getElementById('edit-oel').value = entry.oel || '';
+  document.getElementById('edit-alk').value = entry.alkohol || globalAlkohol;
+  document.getElementById('edit-int').value = entry.intern || '';
+  document.getElementById('edit-datum').value = entry.datum || '';
+  document.getElementById('edit-ma').value = entry.mitarbeiter || '';
+
+  document.getElementById('edit-overlay').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('edit-overlay').classList.remove('show');
+  editingId = null;
+}
+
+function saveEdit(){
+  if(!editingId) return;
+  const idx = verkaufe.findIndex(x=>x.id===editingId);
+  if(idx===-1) return;
+
+  const selVal = parseInt(document.getElementById('edit-duft').value);
+  const p = parfume.find(x=>x.id===selVal);
+
+  verkaufe[idx] = {
+    ...verkaufe[idx],
+    duftname: p ? p.name : verkaufe[idx].duftname,
+    oel: p ? p.oel : document.getElementById('edit-oel').value,
+    alkohol: globalAlkohol,
+    intern: document.getElementById('edit-int').value.trim(),
+    datum: document.getElementById('edit-datum').value,
+    mitarbeiter: document.getElementById('edit-ma').value.trim(),
+  };
+
+  saveV(); renderUebersicht(); renderTagesbericht(); updateStats();
+  closeEditModal();
+  toast('✓ Eintrag aktualisiert');
+}
+
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js">
+// ── EDIT MODAL ────────────────────────────────────────────────
+let editingId = null;
+
+function openEditModal(id){
+  const entry = verkaufe.find(x=>x.id===id);
+  if(!entry) return;
+  editingId = id;
+
+  // Populate duft select
+  const sel = document.getElementById('edit-duft');
+  const sorted = [...parfume].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML = '<option value="">— Duft auswählen —</option>' +
+    sorted.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+
+  // Find matching parfum by name
+  const matched = parfume.find(p=>p.name===entry.duftname);
+  if(matched) sel.value = matched.id;
+
+  document.getElementById('edit-oel').value = entry.oel || '';
+  document.getElementById('edit-alk').value = entry.alkohol || globalAlkohol;
+  document.getElementById('edit-int').value = entry.intern || '';
+  document.getElementById('edit-datum').value = entry.datum || '';
+  document.getElementById('edit-ma').value = entry.mitarbeiter || '';
+
+  document.getElementById('edit-overlay').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('edit-overlay').classList.remove('show');
+  editingId = null;
+}
+
+function saveEdit(){
+  if(!editingId) return;
+  const idx = verkaufe.findIndex(x=>x.id===editingId);
+  if(idx===-1) return;
+
+  const selVal = parseInt(document.getElementById('edit-duft').value);
+  const p = parfume.find(x=>x.id===selVal);
+
+  verkaufe[idx] = {
+    ...verkaufe[idx],
+    duftname: p ? p.name : verkaufe[idx].duftname,
+    oel: p ? p.oel : document.getElementById('edit-oel').value,
+    alkohol: globalAlkohol,
+    intern: document.getElementById('edit-int').value.trim(),
+    datum: document.getElementById('edit-datum').value,
+    mitarbeiter: document.getElementById('edit-ma').value.trim(),
+  };
+
+  saveV(); renderUebersicht(); renderTagesbericht(); updateStats();
+  closeEditModal();
+  toast('✓ Eintrag aktualisiert');
+}
+
+
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0A0A0A;--black2:#111111;--black3:#1C1C1C;
+  --gold:#C9A84C;--gold2:#E2C97E;
+  --white:#FFFFFF;--white2:#F5F5F5;--white3:#E8E8E8;
+  --muted:#7A7A7A;--muted2:#555555;
+  --red:#C0392B;--green:#27AE60;--border:#2C2C2C;
+}
+body{background:var(--black);color:var(--white);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:80px}
+header{background:var(--black2);border-bottom:1px solid var(--gold);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200}
+.logo-name{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase}
+.logo-sub{font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.chef-btn{background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--muted);font-family:'Inter',sans-serif;font-size:0.65rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:8px 14px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:40px}
+.tabs{display:flex;background:var(--black2);border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;padding:14px 18px;cursor:pointer;white-space:nowrap;margin-bottom:-1px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:48px;transition:color .15s,border-color .15s}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+main{max-width:960px;margin:0 auto;padding:28px 16px 0}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:400;font-style:italic;color:var(--gold2);letter-spacing:0.04em;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.sec-title::before{content:'';display:inline-block;width:20px;height:1px;background:var(--gold)}
+.card{background:var(--black3);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:3px;padding:24px;margin-bottom:28px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 22px}
+@media(max-width:520px){.form-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+.label-row{display:flex;align-items:center;gap:5px}
+label{font-size:0.65rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted)}
+.req{color:var(--gold)}
+.tt-wrap{position:relative;display:inline-flex;align-items:center}
+.tt-icon{width:14px;height:14px;border-radius:50%;border:1px solid var(--muted2);color:var(--muted);font-size:0.56rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:default;line-height:1}
+.tt-box{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--black2);border:1px solid var(--gold);color:var(--white2);font-size:0.7rem;line-height:1.5;padding:9px 12px;border-radius:3px;width:200px;z-index:300;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.7)}
+.tt-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--gold)}
+.tt-wrap:hover .tt-box{display:block}
+input,select{background:#0D0D0D;border:1px solid var(--border);border-radius:2px;color:var(--white);font-family:'Inter',sans-serif;font-size:0.88rem;padding:12px 13px;width:100%;transition:border-color .15s;outline:none;-webkit-appearance:none;appearance:none;min-height:48px}
+input::placeholder{color:#3A3A3A}
+input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.12)}
+input[readonly]{color:var(--gold2);background:#0A0A0A;border-color:#1A1A1A}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C9A84C' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+select option{background:var(--black3)}
+input.invalid{border-color:var(--red)}
+.field-err{font-size:0.65rem;color:var(--red);display:none}
+.field-err.show{display:block}
+.auto-hint{font-size:0.6rem;color:var(--muted);margin-top:2px}
+.btn-gold{background:linear-gradient(135deg,#B8912A,var(--gold));border:none;border-radius:2px;color:var(--black);font-family:'Inter',sans-serif;font-size:0.7rem;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;padding:14px 28px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:48px}
+.btn-gold:active{opacity:.8}
+.btn-ghost{background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--muted);font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:14px 20px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:48px}
+.btn-outline-gold{background:transparent;border:1px solid var(--gold);border-radius:2px;color:var(--gold);font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:10px 18px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:44px;display:inline-flex;align-items:center;gap:6px}
+.btn-danger{background:transparent;border:1px solid var(--red);border-radius:2px;color:var(--red);font-family:'Inter',sans-serif;font-size:0.62rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:7px 12px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:36px}
+.form-actions{margin-top:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#toast{position:fixed;top:70px;right:16px;left:16px;background:var(--black3);border:1px solid var(--green);color:#6FCAA0;font-size:0.78rem;padding:12px 18px;border-radius:2px;opacity:0;transform:translateY(-8px);transition:opacity .22s,transform .22s;pointer-events:none;z-index:9999;text-align:center}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.error{border-color:var(--red);color:#FF8080}
+.stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.stat-box{background:var(--black3);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:2px;padding:14px 18px;flex:1;min-width:90px}
+.stat-lbl{font-size:0.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;color:var(--gold)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:3px;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:0.79rem;min-width:640px}
+thead tr{background:#0D0D0D;border-bottom:1px solid var(--gold)}
+th{padding:12px 13px;text-align:left;font-size:0.6rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);white-space:nowrap;cursor:pointer;user-select:none;touch-action:manipulation}
+th .si{opacity:.4;margin-left:3px;font-size:.55rem}
+th.sorted .si{opacity:1}
+tbody tr{border-bottom:1px solid #1E1E1E}
+tbody tr:last-child{border-bottom:none}
+td{padding:11px 13px;color:var(--white2);vertical-align:middle}
+td.sub{color:var(--muted);font-size:0.74rem}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:0.66rem;font-weight:500;font-family:'Inter',monospace}
+.b-alk{background:rgba(201,168,76,.1);color:var(--gold2);border:1px solid rgba(201,168,76,.25)}
+.b-oel{background:rgba(255,255,255,.05);color:var(--white3);border:1px solid rgba(255,255,255,.12)}
+.b-int{background:rgba(90,90,90,.2);color:#B0B0B0;border:1px solid rgba(90,90,90,.35)}
+.btn-del{background:none;border:none;color:#3A3A3A;cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:2px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:36px;min-height:36px}
+.btn-del:active{color:var(--red)}
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:2rem;margin-bottom:12px;opacity:.25}
+.empty-state p{font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;margin-bottom:6px;color:#444}
+.empty-state small{font-size:0.68rem;color:#2E2E2E}
+.pdf-bar{background:var(--black3);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:3px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.pdf-info p{font-size:0.8rem;color:var(--white2);margin-bottom:2px}
+.pdf-info small{font-size:0.67rem;color:var(--muted)}
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.filter-bar input,.filter-bar select{width:auto;flex:1;min-width:120px;padding:10px 12px;font-size:0.78rem;min-height:44px}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+/* PIN */
+#pin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:500;align-items:center;justify-content:center}
+#pin-overlay.show{display:flex}
+.pin-box{background:var(--black3);border:1px solid var(--gold);border-radius:4px;padding:32px 28px;width:300px;max-width:90vw;text-align:center}
+.pin-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--gold);margin-bottom:6px}
+.pin-sub{font-size:0.7rem;color:var(--muted);letter-spacing:.08em;margin-bottom:22px}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:22px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:background .15s,border-color .15s}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold)}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.pin-key{background:var(--black2);border:1px solid var(--border);border-radius:3px;color:var(--white);font-family:'Inter',sans-serif;font-size:1.1rem;font-weight:500;padding:16px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:#2A2A2A;border-color:var(--gold)}
+.pin-err{font-size:0.72rem;color:var(--red);min-height:18px;margin-bottom:8px}
+.pin-cancel{background:none;border:none;color:var(--muted);font-size:0.7rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:manipulation;padding:8px}
+/* CHEF */
+#chef-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:400;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#chef-panel.show{display:block}
+.chef-inner{max-width:700px;margin:0 auto;padding:24px 16px 60px}
+.chef-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--gold)}
+.chef-header h2{font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--gold);letter-spacing:.1em}
+.btn-close{background:none;border:1px solid var(--border);border-radius:2px;color:var(--muted);font-size:0.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:40px}
+.parfum-item{background:var(--black3);border:1px solid var(--border);border-radius:3px;padding:16px;margin-bottom:12px}
+.parfum-item-name{font-weight:600;font-size:0.88rem;color:var(--white);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.parfum-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.parfum-fields input{padding:9px 11px;font-size:0.78rem;min-height:40px}
+.parfum-fields label{font-size:0.58rem}
+.add-parfum-form{background:var(--black2);border:1px solid var(--border);border-radius:3px;padding:18px;margin-top:20px}
+.add-parfum-form h3{font-size:0.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.add-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:480px){.add-grid{grid-template-columns:1fr}}
+
+/* EDIT MODAL */
+#edit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;align-items:center;justify-content:center;padding:16px}
+#edit-overlay.show{display:flex}
+.edit-box{background:var(--black3);border:1px solid var(--gold);border-top:3px solid var(--gold);border-radius:4px;padding:28px 24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.edit-title{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--gold);margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:420px){.edit-grid{grid-template-columns:1fr}}
+.edit-actions{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+.btn-edit{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:4px 6px;border-radius:2px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-width:32px;min-height:36px;transition:color .15s}
+.btn-edit:active{color:var(--gold)}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- PIN OVERLAY -->
+<div id="pin-overlay">
+  <div class="pin-box">
+    <div class="pin-title">Chef-Bereich</div>
+    <div class="pin-sub">PIN eingeben</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="pin-keypad">
+      <button class="pin-key" data-k="1">1</button><button class="pin-key" data-k="2">2</button><button class="pin-key" data-k="3">3</button>
+      <button class="pin-key" data-k="4">4</button><button class="pin-key" data-k="5">5</button><button class="pin-key" data-k="6">6</button>
+      <button class="pin-key" data-k="7">7</button><button class="pin-key" data-k="8">8</button><button class="pin-key" data-k="9">9</button>
+      <button class="pin-key" data-k="del">⌫</button><button class="pin-key" data-k="0">0</button><button class="pin-key" data-k="ok">OK</button>
+    </div>
+    <button class="pin-cancel" id="pin-cancel">Abbrechen</button>
+  </div>
+</div>
+
+<!-- CHEF PANEL -->
+<div id="chef-panel">
+  <div class="chef-inner">
+    <div class="chef-header">
+      <h2>🔐 Chef-Verwaltung</h2>
+      <button class="btn-close" id="chef-close">✕ Schließen</button>
+    </div>
+    <div class="sec-title">Alkoholcharge (global)</div>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6">Diese Charge gilt für <strong style="color:var(--white2)">alle Düfte</strong>. Bei neuer Alkohol-Lieferung hier einmal ändern — wird sofort überall übernommen.</p>
+    <div class="card" style="margin-bottom:28px;padding:18px 20px">
+      <div class="field">
+        <label>Aktuelle Alkoholcharge</label>
+        <input type="text" id="chef-alk-global" placeholder="z. B. ALK-2024-01"/>
+      </div>
+    </div>
+    <div class="sec-title">Parfümliste verwalten</div>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:16px;line-height:1.6">Hier kannst du die Ölcharge eines Duftes bei neuer Bestellung ändern oder Düfte hinzufügen/löschen.</p>
+    <div id="parfum-list"></div>
+    <div class="add-parfum-form">
+      <h3>+ Neues Parfüm hinzufügen</h3>
+      <div class="add-grid">
+        <div class="field"><label>Duftname <span class="req">*</span></label><input type="text" id="new-name" placeholder="z. B. Istanbul"/></div>
+        <div class="field"><label>Ölcharge <span class="req">*</span></label><input type="text" id="new-oel" placeholder="z. B. OF2307M2157"/></div>
+        <div class="field"><label>Alkoholcharge</label><input type="text" id="new-alk" placeholder="z. B. ALK-2024-01"/></div>
+      </div>
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-gold" id="btn-add-parfum">Hinzufügen</button>
+      </div>
+    </div>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+      <button class="btn-gold" id="btn-save-chef" style="width:100%">✓ Alle Änderungen speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div><div class="logo-name">Rouge Nuit</div><div class="logo-sub">Verkaufsverwaltung</div></div>
+  <button class="chef-btn" id="btn-chef-open">🔐 Chef</button>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="erfassen">Verkauf erfassen</button>
+  <button class="tab-btn" data-tab="tagesbericht">Tagesbericht</button>
+  <button class="tab-btn" data-tab="uebersicht">Alle Einträge</button>
+</div>
+
+<main>
+
+<!-- TAB 1 -->
+<div class="tab-panel active" id="tab-erfassen">
+  <div class="sec-title" style="margin-top:8px">Neuen Verkauf eintragen</div>
+  <div class="card">
+    <div class="form-grid">
+
+      <div class="field" style="grid-column:1/-1">
+        <div class="label-row">
+          <label for="f-duft">Duftname auswählen <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Parfüm aus der Liste wählen — Öl- und Alkoholcharge werden automatisch ausgefüllt.</div>
+          </div>
+        </div>
+        <select id="f-duft"><option value="">— Duft auswählen —</option></select>
+        <span class="field-err" id="err-duft">Bitte Duft auswählen.</span>
+      </div>
+
+      <div class="field">
+        <label>Ölcharge</label>
+        <input type="text" id="f-oel" readonly placeholder="Automatisch ausgefüllt"/>
+        <span class="auto-hint">Wird beim Auswählen des Duftes ausgefüllt</span>
+      </div>
+
+      <div class="field">
+        <label>Alkoholcharge</label>
+        <input type="text" id="f-alk" readonly placeholder="Automatisch ausgefüllt"/>
+        <span class="auto-hint">Wird beim Auswählen des Duftes ausgefüllt</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-int">Interne Charge <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Eure eigene interne Chargennummer — wird manuell eingetragen, z. B. „RN-2024-001".</div>
+          </div>
+        </div>
+        <input type="text" id="f-int" placeholder="z. B. RN-2024-001"/>
+        <span class="field-err" id="err-int">Bitte interne Charge eingeben.</span>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="f-datum">Verkaufsdatum <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Datum des Verkaufs. Automatisch auf heute gesetzt.</div>
+          </div>
+        </div>
+        <input type="date" id="f-datum"/>
+        <span class="field-err" id="err-datum">Bitte Datum wählen.</span>
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <div class="label-row">
+          <label for="f-ma">Mitarbeiter <span class="req">*</span></label>
+          <div class="tt-wrap"><span class="tt-icon">i</span>
+            <div class="tt-box">Dein Name — erscheint im Tagesbericht.</div>
+          </div>
+        </div>
+        <input type="text" id="f-ma" placeholder="Deinen Namen eingeben"/>
+        <span class="field-err" id="err-ma">Bitte Namen eingeben.</span>
+      </div>
+
+    </div>
+    <div class="form-actions">
+      <button class="btn-gold" id="btn-submit">Verkauf speichern</button>
+      <button class="btn-ghost" id="btn-reset">Zurücksetzen</button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-lbl">Gesamt</div><div class="stat-val" id="s-total">0</div></div>
+    <div class="stat-box"><div class="stat-lbl">Heute</div><div class="stat-val" id="s-today">0</div></div>
+    <div class="stat-box"><div class="stat-lbl">Diesen Monat</div><div class="stat-val" id="s-month">0</div></div>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="tab-panel" id="tab-tagesbericht">
+  <div style="margin-top:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div class="sec-title" style="margin-bottom:0">Tagesbericht</div>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--black3);border:1px solid var(--border);border-radius:2px;padding:8px 14px">
+        <span style="font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Datum:</span>
+        <input type="date" id="tb-datum" style="background:none;border:none;padding:0;font-size:.75rem;color:var(--gold);width:auto;min-height:auto"/>
+      </div>
+    </div>
+    <div class="pdf-bar">
+      <div class="pdf-info"><p>Schichtabschluss — PDF Tagesbericht</p><small>Alle Verkäufe des gewählten Tages herunterladen.</small></div>
+      <button class="btn-gold" id="btn-pdf">↓ PDF herunterladen</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-lbl">Verkäufe am Tag</div><div class="stat-val" id="tb-count">0</div></div>
+      <div class="stat-box"><div class="stat-lbl">Verschiedene Düfte</div><div class="stat-val" id="tb-dufte">0</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Duftname</th><th>Ölcharge</th><th>Alkoholcharge</th><th>Interne Charge</th><th>Mitarbeiter</th></tr></thead>
+        <tbody id="tb-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3 -->
+<div class="tab-panel" id="tab-uebersicht">
+  <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+    <div class="sec-title" style="margin-bottom:0">Alle Einträge</div>
+    <button class="btn-outline-gold" id="btn-csv">↓ CSV</button>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="f-search" placeholder="Suche …"/>
+    <select id="f-monat"><option value="">Alle Monate</option></select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th data-k="duftname">Duftname <span class="si">↕</span></th>
+        <th data-k="datum">Datum <span class="si">↕</span></th>
+        <th data-k="oel">Ölcharge <span class="si">↕</span></th>
+        <th data-k="alkohol">Alkoholcharge <span class="si">↕</span></th>
+        <th data-k="intern">Interne Charge <span class="si">↕</span></th>
+        <th data-k="mitarbeiter">Mitarbeiter <span class="si">↕</span></th>
+        <th></th>
+      </tr></thead>
+      <tbody id="ue-body"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<script>
+const CORRECT_PIN='1610';
+
+// Globale Alkoholcharge — eine für alle Düfte
+let globalAlkohol = localStorage.getItem('rn_alkohol') || '';
+
+let parfume = JSON.parse(localStorage.getItem('rn_parfume_v2') || 'null') || [
+  {id:1,  name:'Istanbul',      oel:'OF2307M2157'},
+  {id:2,  name:'Escape',        oel:'OF2307M2106'},
+  {id:3,  name:'La Vie',        oel:'OF2307M1640'},
+  {id:4,  name:'Beyond Shadow', oel:'OF2307M2176'},
+  {id:5,  name:'Diabolic',      oel:'OF2307M1638'},
+  {id:6,  name:'Santorini',     oel:'OF2307M2177'},
+  {id:7,  name:'Greatness',     oel:'OF2307M1643'},
+  {id:8,  name:'Black Horse',   oel:'OF2307M2105'},
+  {id:9,  name:'Louvre',        oel:'OF2307M1639'},
+  {id:10, name:'Venedig',       oel:'OF2307M1641'},
+  {id:11, name:'Sugar',         oel:'OF2308M3486'},
+  {id:12, name:'Bird of Pray',  oel:'OF2308M3485'},
+  {id:13, name:'Vintage',       oel:'OF2308M3487'},
+  {id:14, name:'Lemon Cake',    oel:'OF2308M3488'},
+  {id:15, name:'Sultan',        oel:'OF2404M1552'},
+  {id:16, name:'Pigalle',       oel:'OF2404M1014'},
+  {id:17, name:'Monaco',        oel:'282.412'},
+  {id:18, name:'Lemon Fresh',   oel:'282.413'},
+  {id:19, name:'Fruitbomb',     oel:'282.414'},
+  {id:20, name:'Tokio',         oel:'282.415'},
+  {id:21, name:'Prag',          oel:'282.416'},
+  {id:22, name:'Seoul',         oel:'282.417'},
+  {id:23, name:'Miami',         oel:'282.418'},
+  {id:24, name:'Ruby Crystal',  oel:'282.419'},
+  {id:25, name:'Milano',        oel:'282.420'},
+  {id:26, name:'Paris',         oel:'282.422'},
+  {id:27, name:'Roma',          oel:'282.423'},
+  {id:28, name:'Litchi Rose',   oel:'282.424'},
+  {id:29, name:'New York',      oel:'282.425'},
+  {id:30, name:'Luxemburg',     oel:'282.426'},
+  {id:31, name:'Los Angeles',   oel:'289.904'},
+  {id:32, name:'Amber Vanille', oel:'289.905'},
+  {id:33, name:'My Journey',    oel:'289.906'},
+  {id:34, name:'Accent',        oel:'289.907'},
+  {id:35, name:'Liverpool',     oel:'286.704'},
+  {id:36, name:'Bella',         oel:'286.714'},
+  {id:37, name:'Narcosis',      oel:'286.715'},
+  {id:38, name:'Khloe',         oel:'286.716'},
+  {id:39, name:'Olymp',         oel:'286.717'},
+  {id:40, name:'Love',          oel:'286.718'},
+  {id:41, name:'Mykonos',       oel:'286.719'},
+  {id:42, name:'Phuket',        oel:'292.808'},
+  {id:43, name:'Cogane',        oel:'292.809'},
+  {id:44, name:'Paradise',      oel:'292.810'},
+  {id:45, name:'Pure Clean',    oel:'292.811'},
+  {id:46, name:'Spicy Apple',   oel:'OF2311M1678'},
+  {id:47, name:'Madame',        oel:'OF2311M1668'},
+  {id:48, name:'Rubin',         oel:'OF2311M1667'},
+  {id:49, name:'Amber Honey',   oel:'OF2311M1682'},
+  {id:50, name:'Marmara Black', oel:'OF2304M0301'},
+];
+
+let verkaufe = JSON.parse(localStorage.getItem('rn_v4') || '[]');
+let sortKey='datum', sortAsc=false;
+let pinBuffer='', chefParfume=[];
+
+function saveV(){ localStorage.setItem('rn_v4', JSON.stringify(verkaufe)) }
+function saveP(){ localStorage.setItem('rn_parfume_v2', JSON.stringify(parfume)) }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('f-datum').value = todayStr();
+  document.getElementById('tb-datum').value = todayStr();
+  populateDuftSelect();
+  updateStats();
+  renderTagesbericht();
+  populateMonths();
+  renderUebersicht();
+
+  // TABS
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', e => { e.preventDefault(); switchTab(btn.dataset.tab); });
+  });
+
+  // BUTTONS
+  wb('btn-submit', submitVerkauf);
+  wb('btn-reset', resetForm);
+  wb('btn-pdf', exportPDF);
+  wb('btn-csv', exportCSV);
+  wb('btn-chef-open', () => showPin());
+  wb('pin-cancel', hidePinOverlay);
+  wb('chef-close', closeChef);
+  wb('btn-add-parfum', addParfum);
+  wb('btn-save-chef', saveChef);
+  wb('btn-edit-save', saveEdit);
+  wb('btn-edit-cancel', closeEditModal);
+
+  // Edit modal: duft change → autofill oel
+  const editDuftEl = document.getElementById('edit-duft');
+  if(editDuftEl){
+    editDuftEl.addEventListener('change', () => {
+      const id = parseInt(document.getElementById('edit-duft').value);
+      const p = parfume.find(x=>x.id===id);
+      if(p){
+        document.getElementById('edit-oel').value = p.oel;
+        document.getElementById('edit-alk').value = globalAlkohol;
+      }
+    });
+  }
+
+  // TABLE SORT
+  document.querySelectorAll('#tab-uebersicht th[data-k]').forEach(th => {
+    th.addEventListener('pointerdown', e => { e.preventDefault(); sortBy(th.dataset.k); });
+  });
+
+  document.getElementById('f-search').addEventListener('input', renderUebersicht);
+  document.getElementById('f-monat').addEventListener('change', renderUebersicht);
+  document.getElementById('tb-datum').addEventListener('change', renderTagesbericht);
+  document.getElementById('f-duft').addEventListener('change', autofill);
+
+  // PIN KEYPAD
+  document.querySelectorAll('.pin-key').forEach(k => {
+    k.addEventListener('pointerdown', e => { e.preventDefault(); handlePinKey(k.dataset.k); });
+  });
+});
+
+function wb(id, fn){
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='tagesbericht') renderTagesbericht();
+  if(name==='uebersicht'){ populateMonths(); renderUebersicht(); }
+}
+
+function populateDuftSelect(){
+  const sel=document.getElementById('f-duft');
+  const cur=sel.value;
+  const sorted=[...parfume].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML='<option value="">— Duft auswählen —</option>'+
+    sorted.map(p=>`<option value="${p.id}"${p.id==cur?' selected':''}>${esc(p.name)}</option>`).join('');
+}
+
+function autofill(){
+  const id=parseInt(document.getElementById('f-duft').value);
+  const p=parfume.find(x=>x.id===id);
+  document.getElementById('f-oel').value = p ? p.oel : '';
+  document.getElementById('f-alk').value = p ? globalAlkohol : '';
+}
+
+function submitVerkauf(){
+  let ok=true;
+  function chk(id,eid){ const el=document.getElementById(id),er=document.getElementById(eid); if(!el.value.trim()){el.classList.add('invalid');er.classList.add('show');ok=false;}else{el.classList.remove('invalid');er.classList.remove('show');} }
+  chk('f-duft','err-duft');
+  chk('f-int','err-int');
+  chk('f-datum','err-datum');
+  chk('f-ma','err-ma');
+  if(!ok) return;
+  const id=parseInt(document.getElementById('f-duft').value);
+  const p=parfume.find(x=>x.id===id);
+  verkaufe.unshift({
+    id:Date.now(),
+    duftname: p?p.name:'',
+    datum: document.getElementById('f-datum').value,
+    oel: document.getElementById('f-oel').value,
+    alkohol: globalAlkohol,
+    intern: document.getElementById('f-int').value.trim(),
+    mitarbeiter: document.getElementById('f-ma').value.trim()
+  });
+  saveV(); resetForm(); updateStats(); populateMonths(); renderUebersicht(); renderTagesbericht();
+  toast('✓ Verkauf gespeichert');
+}
+
+function resetForm(){
+  ['f-duft','f-int','f-ma'].forEach(id=>{ document.getElementById(id).value=''; document.getElementById(id).classList.remove('invalid'); });
+  document.getElementById('f-oel').value='';
+  document.getElementById('f-alk').value='';
+  document.getElementById('f-datum').value=todayStr();
+  ['err-duft','err-int','err-datum','err-ma'].forEach(id=>document.getElementById(id).classList.remove('show'));
+}
+
+function updateStats(){
+  const today=todayStr(),month=today.slice(0,7);
+  document.getElementById('s-total').textContent=verkaufe.length;
+  document.getElementById('s-today').textContent=verkaufe.filter(x=>x.datum===today).length;
+  document.getElementById('s-month').textContent=verkaufe.filter(x=>x.datum.startsWith(month)).length;
+}
+
+function renderTagesbericht(){
+  const d=document.getElementById('tb-datum').value;
+  const rows=verkaufe.filter(x=>x.datum===d);
+  document.getElementById('tb-count').textContent=rows.length;
+  document.getElementById('tb-dufte').textContent=new Set(rows.map(x=>x.duftname)).size;
+  const tbody=document.getElementById('tb-body');
+  if(!rows.length){ tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><p>Keine Verkäufe an diesem Tag.</p><small>Wähle ein anderes Datum.</small></div></td></tr>`; return; }
+  tbody.innerHTML=rows.map((x,i)=>`<tr>
+    <td class="sub">${i+1}</td>
+    <td><strong>${esc(x.duftname)}</strong></td>
+    <td><span class="badge b-oel">${esc(x.oel)}</span></td>
+    <td><span class="badge b-alk">${esc(x.alkohol||'—')}</span></td>
+    <td><span class="badge b-int">${esc(x.intern)}</span></td>
+    <td class="sub">${esc(x.mitarbeiter)}</td>
+  </tr>`).join('');
+}
+
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const d=document.getElementById('tb-datum').value;
+  const rows=verkaufe.filter(x=>x.datum===d);
+  if(!rows.length){ toast('Keine Verkäufe an diesem Tag.',true); return; }
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,m=16;
+  doc.setFillColor(10,10,10); doc.rect(0,0,W,297,'F');
+  doc.setFillColor(201,168,76); doc.rect(0,0,W,28,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(10,10,10);
+  doc.text('ROUGE NUIT',m,17);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(40,30,0);
+  doc.text('TAGESBERICHT — INTERNE NUTZUNG',m,23);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(10,10,10);
+  doc.text(fmtDate(d),W-m,14,{align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(7);
+  doc.text('Schichtabschluss',W-m,20,{align:'right'});
+  doc.setDrawColor(201,168,76); doc.setLineWidth(0.5); doc.line(m,34,W-m,34);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(201,168,76);
+  doc.text('Verkaufsprotokoll',m,41);
+  doc.setFillColor(28,28,28); doc.setDrawColor(44,44,44); doc.setLineWidth(0.3);
+  doc.roundedRect(m,45,W-m*2,18,1,1,'FD');
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,120,120);
+  doc.text('DATUM',m+5,52); doc.text('VERKÄUFE',m+55,52); doc.text('DÜFTE',m+100,52); doc.text('ERSTELLT',m+145,52);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(240,240,240);
+  doc.text(fmtDate(d),m+5,58); doc.text(String(rows.length),m+55,58);
+  doc.text(String(new Set(rows.map(x=>x.duftname)).size),m+100,58);
+  doc.text(new Date().toLocaleDateString('de-DE'),m+145,58);
+  doc.autoTable({
+    startY:70,margin:{left:m,right:m},
+    head:[['#','Duftname','Ölcharge','Alkoholcharge','Interne Charge','Mitarbeiter']],
+    body:rows.map((x,i)=>[i+1,x.duftname,x.oel,x.alkohol||'—',x.intern,x.mitarbeiter]),
+    styles:{font:'helvetica',fontSize:8,textColor:[230,230,230],fillColor:[17,17,17],lineColor:[40,40,40],lineWidth:0.25,cellPadding:4},
+    headStyles:{fillColor:[35,35,35],textColor:[201,168,76],fontSize:6.5,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[22,22,22]},
+    columnStyles:{0:{cellWidth:8,halign:'center',textColor:[100,100,100]},1:{cellWidth:38,fontStyle:'bold',textColor:[255,255,255]},2:{cellWidth:34},3:{cellWidth:30},4:{cellWidth:28},5:{cellWidth:28}}
+  });
+  doc.setDrawColor(201,168,76); doc.setLineWidth(0.4); doc.line(m,280,W-m,280);
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(80,80,80);
+  doc.text('Rouge Nuit — Vertrauliches internes Dokument',m,285);
+  doc.text(`Generiert: ${new Date().toLocaleString('de-DE')}`,W-m,285,{align:'right'});
+  doc.save(`RogueNuit_Tagesbericht_${d}.pdf`);
+  toast('✓ PDF heruntergeladen');
+}
+
+function sortBy(key){
+  if(sortKey===key) sortAsc=!sortAsc; else{sortKey=key;sortAsc=true;}
+  renderUebersicht();
+}
+function renderUebersicht(){
+  const q=(document.getElementById('f-search').value||'').toLowerCase();
+  const mo=document.getElementById('f-monat').value;
+  let rows=verkaufe.filter(x=>{
+    const mq=!q||[x.duftname,x.oel,x.alkohol,x.intern,x.mitarbeiter].some(s=>(s||'').toLowerCase().includes(q));
+    const mm=!mo||x.datum.startsWith(mo);
+    return mq&&mm;
+  });
+  rows.sort((a,b)=>{ let va=a[sortKey]||'',vb=b[sortKey]||''; return sortAsc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0); });
+  document.querySelectorAll('#tab-uebersicht th[data-k]').forEach(th=>{
+    th.classList.toggle('sorted',th.dataset.k===sortKey);
+    th.querySelector('.si').textContent=th.dataset.k===sortKey?(sortAsc?'↑':'↓'):'↕';
+  });
+  const tbody=document.getElementById('ue-body');
+  if(!rows.length){ tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📦</div><p>Keine Einträge gefunden.</p><small>Trage Verkäufe im ersten Tab ein.</small></div></td></tr>`; return; }
+  tbody.innerHTML=rows.map(x=>`<tr>
+    <td><strong>${esc(x.duftname)}</strong></td>
+    <td class="sub">${fmtDate(x.datum)}</td>
+    <td><span class="badge b-oel">${esc(x.oel)}</span></td>
+    <td><span class="badge b-alk">${esc(x.alkohol||'—')}</span></td>
+    <td><span class="badge b-int">${esc(x.intern)}</span></td>
+    <td class="sub">${esc(x.mitarbeiter)}</td>
+    <td style="display:flex;gap:4px;align-items:center">
+      <button class="btn-edit" data-edit="${x.id}" title="Bearbeiten">✏️</button>
+      <button class="btn-del" data-id="${x.id}" title="Löschen">✕</button>
+    </td>
+  </tr>`).join('');
+  document.querySelectorAll('.btn-del').forEach(b=>{
+    b.addEventListener('pointerdown',e=>{e.preventDefault();delEntry(parseInt(b.dataset.id));});
+  });
+  document.querySelectorAll('.btn-edit').forEach(b=>{
+    b.addEventListener('pointerdown',e=>{e.preventDefault();openEditModal(parseInt(b.dataset.edit));});
+  });
+}
+function delEntry(id){
+  if(!confirm('Eintrag wirklich löschen?')) return;
+  verkaufe=verkaufe.filter(x=>x.id!==id);
+  saveV(); updateStats(); populateMonths(); renderUebersicht(); renderTagesbericht();
+}
+function populateMonths(){
+  const months=[...new Set(verkaufe.map(x=>x.datum.slice(0,7)))].sort().reverse();
+  const sel=document.getElementById('f-monat');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Alle Monate</option>'+months.map(m=>`<option value="${m}"${m===cur?' selected':''}>${fmtMonth(m)}</option>`).join('');
+}
+function exportCSV(){
+  if(!verkaufe.length){toast('Keine Daten.',true);return;}
+  const h=['Duftname','Datum','Ölcharge','Alkoholcharge','Interne Charge','Mitarbeiter'];
+  const csv=[h,...verkaufe.map(x=>[x.duftname,x.datum,x.oel,x.alkohol||'',x.intern,x.mitarbeiter])].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RougeNuit_Export_${todayStr()}.csv`;
+  a.click();
+  toast('✓ CSV exportiert');
+}
+
+// PIN
+function showPin(){ pinBuffer=''; updatePinDots(); document.getElementById('pin-err').textContent=''; document.getElementById('pin-overlay').classList.add('show'); }
+function hidePinOverlay(){ document.getElementById('pin-overlay').classList.remove('show'); pinBuffer=''; updatePinDots(); }
+function handlePinKey(k){
+  if(k==='del'){ pinBuffer=pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if(k==='ok'){ checkPin(); return; }
+  if(pinBuffer.length<4) pinBuffer+=k;
+  updatePinDots();
+  if(pinBuffer.length===4) setTimeout(checkPin,120);
+}
+function updatePinDots(){ for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled',i<pinBuffer.length); }
+function checkPin(){
+  if(pinBuffer===CORRECT_PIN){ hidePinOverlay(); openChef(); }
+  else{ document.getElementById('pin-err').textContent='Falscher PIN.'; pinBuffer=''; updatePinDots(); }
+}
+
+// CHEF
+function openChef(){
+  chefParfume=JSON.parse(JSON.stringify(parfume));
+  renderChefList();
+  const alkInput=document.getElementById('chef-alk-global');
+  if(alkInput) alkInput.value=globalAlkohol;
+  document.getElementById('chef-panel').classList.add('show');
+}
+function closeChef(){ document.getElementById('chef-panel').classList.remove('show'); }
+function renderChefList(){
+  const sorted=[...chefParfume].sort((a,b)=>a.name.localeCompare(b.name));
+  const container=document.getElementById('parfum-list');
+  if(!chefParfume.length){ container.innerHTML=`<p style="color:var(--muted);font-size:.8rem;margin-bottom:12px">Keine Parfüme vorhanden.</p>`; return; }
+  container.innerHTML=sorted.map(p=>`
+    <div class="parfum-item" data-id="${p.id}">
+      <div class="parfum-item-name">
+        <span>${esc(p.name)}</span>
+        <button class="btn-danger" data-del="${p.id}">Löschen</button>
+      </div>
+      <div class="parfum-fields">
+        <div class="field"><label>Ölcharge</label><input type="text" class="pf-oel" value="${esc(p.oel)}" data-id="${p.id}"/></div>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('pointerdown',e=>{e.preventDefault();delParfum(parseInt(b.dataset.del));});
+  });
+}
+function delParfum(id){ if(!confirm('Parfüm wirklich löschen?')) return; chefParfume=chefParfume.filter(p=>p.id!==id); renderChefList(); }
+function addParfum(){
+  const name=document.getElementById('new-name').value.trim();
+  const oel=document.getElementById('new-oel').value.trim();
+  if(!name||!oel){ toast('Bitte Duftname und Ölcharge eingeben.',true); return; }
+  chefParfume.push({id:Date.now(),name,oel});
+  document.getElementById('new-name').value='';
+  document.getElementById('new-oel').value='';
+  renderChefList();
+  toast('✓ Parfüm hinzugefügt');
+}
+function saveChef(){
+  const alkInput=document.getElementById('chef-alk-global');
+  if(alkInput) globalAlkohol=alkInput.value.trim();
+  localStorage.setItem('rn_alkohol', globalAlkohol);
+  chefParfume.forEach(p=>{
+    const oelEl=document.querySelector(`.pf-oel[data-id="${p.id}"]`);
+    if(oelEl) p.oel=oelEl.value.trim();
+  });
+  parfume=JSON.parse(JSON.stringify(chefParfume));
+  saveP(); populateDuftSelect(); closeChef();
+  toast('✓ Änderungen gespeichert');
+}
+
+function todayStr(){ return new Date().toISOString().split('T')[0] }
+function fmtDate(d){ if(!d)return'—'; const[y,m,dd]=d.split('-'); return `${dd}.${m}.${y}` }
+function fmtMonth(ym){ const[y,m]=ym.split('-'); return ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][+m-1]+' '+y }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function toast(msg,isErr=false){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.toggle('error',isErr); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+// ── EDIT MODAL ────────────────────────────────────────────────
+let editingId = null;
+
+function openEditModal(id){
+  const entry = verkaufe.find(x=>x.id===id);
+  if(!entry) return;
+  editingId = id;
+
+  // Populate duft select
+  const sel = document.getElementById('edit-duft');
+  const sorted = [...parfume].sort((a,b)=>a.name.localeCompare(b.name));
+  sel.innerHTML = '<option value="">— Duft auswählen —</option>' +
+    sorted.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+
+  // Find matching parfum by name
+  const matched = parfume.find(p=>p.name===entry.duftname);
+  if(matched) sel.value = matched.id;
+
+  document.getElementById('edit-oel').value = entry.oel || '';
+  document.getElementById('edit-alk').value = entry.alkohol || globalAlkohol;
+  document.getElementById('edit-int').value = entry.intern || '';
+  document.getElementById('edit-datum').value = entry.datum || '';
+  document.getElementById('edit-ma').value = entry.mitarbeiter || '';
+
+  document.getElementById('edit-overlay').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('edit-overlay').classList.remove('show');
+  editingId = null;
+}
+
+function saveEdit(){
+  if(!editingId) return;
+  const idx = verkaufe.findIndex(x=>x.id===editingId);
+  if(idx===-1) return;
+
+  const selVal = parseInt(document.getElementById('edit-duft').value);
+  const p = parfume.find(x=>x.id===selVal);
+
+  verkaufe[idx] = {
+    ...verkaufe[idx],
+    duftname: p ? p.name : verkaufe[idx].duftname,
+    oel: p ? p.oel : document.getElementById('edit-oel').value,
+    alkohol: globalAlkohol,
+    intern: document.getElementById('edit-int').value.trim(),
+    datum: document.getElementById('edit-datum').value,
+    mitarbeiter: document.getElementById('edit-ma').value.trim(),
+  };
+
+  saveV(); renderUebersicht(); renderTagesbericht(); updateStats();
+  closeEditModal();
+  toast('✓ Eintrag aktualisiert');
+}
+
+
+</script>
+
+<!-- EDIT MODAL -->
+<div id="edit-overlay">
+  <div class="edit-box">
+    <div class="edit-title">✏️ Eintrag bearbeiten</div>
+    <div class="edit-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Duftname</label>
+        <select id="edit-duft"></select>
+      </div>
+      <div class="field">
+        <label>Ölcharge</label>
+        <input type="text" id="edit-oel" readonly/>
+        <span class="auto-hint">Automatisch vom Duft</span>
+      </div>
+      <div class="field">
+        <label>Alkoholcharge</label>
+        <input type="text" id="edit-alk" readonly/>
+        <span class="auto-hint">Globale Alkoholcharge</span>
+      </div>
+      <div class="field">
+        <label>Interne Charge</label>
+        <input type="text" id="edit-int" placeholder="z. B. RN-2024-001"/>
+      </div>
+      <div class="field">
+        <label>Datum</label>
+        <input type="date" id="edit-datum"/>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Mitarbeiter</label>
+        <input type="text" id="edit-ma" placeholder="Name"/>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn-gold" id="btn-edit-save">✓ Speichern</button>
+      <button class="btn-ghost" id="btn-edit-cancel">Abbrechen</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
